@@ -501,6 +501,7 @@ FAST_CODE_NOINLINE void rxFrameCheck(timeUs_t currentTimeUs, timeDelta_t current
 
         break;
 #endif
+    case RX_PROVIDER_UDP:
     case RX_PROVIDER_SERIAL:
     case RX_PROVIDER_MSP:
     case RX_PROVIDER_SPI:
