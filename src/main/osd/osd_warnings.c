@@ -141,7 +141,7 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
             *displayAttr = DISPLAYPORT_SEVERITY_INFO;
             return;
         } else if (!ARMING_FLAG(ARMED)) { // if disarmed, but crash flip mode is activated
-            tfp_sprintf(warningText, STR_OSDW_CRASH_FLIP);
+            tfp_sprintf(warningText, STR_OSDW_CRASH_FLIP_SWITCH);
             *displayAttr = DISPLAYPORT_SEVERITY_INFO;
             return;
         }
@@ -199,7 +199,7 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
 #ifdef USE_RX_LINK_QUALITY_INFO
     // Link Quality
     if (osdWarnGetState(OSD_WARNING_LINK_QUALITY) && (rxGetLinkQualityPercent() < osdConfig()->link_quality_alarm)) {
-        tfp_sprintf(warningText, STR_OSDW_LINK_QUA);
+        tfp_sprintf(warningText, STR_OSDW_LINK_QUALITY);
         *displayAttr = DISPLAYPORT_SEVERITY_CRITICAL;
         *blinking = true;
         return;
