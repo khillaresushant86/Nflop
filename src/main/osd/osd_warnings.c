@@ -141,7 +141,7 @@ void renderOsdWarning(char *warningText, bool *blinking, uint8_t *displayAttr)
             *displayAttr = DISPLAYPORT_SEVERITY_INFO;
             return;
         } else if (!ARMING_FLAG(ARMED)) { // if disarmed, but crash flip mode is activated
-            tfp_sprintf(warningText, STR_OSDW_CRASH_FLIP_SWITCH);
+            tfp_sprintf(warningText, STR_OSDW_CRASH_FLIP);
             *displayAttr = DISPLAYPORT_SEVERITY_INFO;
             return;
         }
