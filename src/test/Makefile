@@ -18,21 +18,18 @@ OBJECT_DIR = $(ROOT)/obj/test
 TARGET_DIR = $(USER_DIR)/target
 MAKE_SCRIPT_DIR := $(ROOT)/mk
 
-<<<<<<< HEAD
 include $(MAKE_SCRIPT_DIR)/system-id.mk
-=======
+
 # Setup locale
 LOCALE_LIST := $(sort $(notdir $(patsubst %/,%,$(dir $(wildcard $(USER_DIR)/locales/*/bf_locale.h)))))
 ifeq ($(LOCALE),)
-LOCALE := en
+    LOCALE := en
 endif
 ifeq ($(filter $(LOCALE),$(LOCALE_LIST)),)
     $(error LOCALE $(LOCALE) must be one of >$(LOCALE_LIST)<)
 endif
 INCLUDE_DIRS := $(USER_DIR)/locales/$(LOCALE)
 
-include $(ROOT)/make/system-id.mk
->>>>>>> bf516af85 (First commit, without changes to cli.c)
 
 VPATH := $(VPATH):$(USER_DIR):$(TEST_DIR)
 
