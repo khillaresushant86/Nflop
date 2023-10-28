@@ -1076,12 +1076,9 @@ static void osdRenderStatsBegin(void)
     osdStatsRenderingState.index = 0;
 }
 
-
 // call repeatedly until it returns true which indicates that all stats have been rendered.
 static bool osdRenderStatsContinue(void)
 {
-    uint8_t midCol = osdDisplayPort->cols / 2;
-
     if (osdStatsRenderingState.row == 0) {
 
         bool displayLabel = false;
@@ -1098,7 +1095,7 @@ static bool osdRenderStatsContinue(void)
         }
 
         if (displayLabel) {
-            displayWrite(osdDisplayPort, midCol - (strlen(STR_OSD_STATS) / 2), osdStatsRenderingState.row++, DISPLAYPORT_SEVERITY_NORMAL, STR_OSD_STATS);
+            displayWriteCentered(osdDisplayPort, 0, osdStatsRenderingState.row++, DISPLAYPORT_SEVERITY_NORMAL, STR_OSD_STATS);
             return false;
         }
     }

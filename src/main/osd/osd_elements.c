@@ -366,7 +366,8 @@ static void osdFormatCoordinate(char *buff, gpsCoordinateType_e coordinateType, 
 
     case OSD_ELEMENT_TYPE_3: // degree, minutes, seconds style. ddd^mm'ss.00"W
         {
-            char trailingSymbol[3];     // space for extended chars, ie. 2+1
+            const char *trailingSymbols = STR_OSDE_GPS_DIRECTION;   // NSEW
+            char trailingSymbol;
             *buff++ = leadingSymbol;
 
             const int minutes = fractionalPart * 60 / GPS_DEGREES_DIVIDER;
@@ -375,13 +376,11 @@ static void osdFormatCoordinate(char *buff, gpsCoordinateType_e coordinateType, 
             const int tenthSeconds = (fractionalMinutes * 60 % GPS_DEGREES_DIVIDER) * 10 / GPS_DEGREES_DIVIDER;
 
             if (coordinateType == GPS_LONGITUDE) {
-//                trailingSymbol = (gpsValue < 0) ? 'W' : 'E';
-                (gpsValue < 0) ? strcpy(trailingSymbol, STR_OSDE_GPS_WEST) : strcpy(trailingSymbol, STR_OSDE_GPS_EAST);
+                trailingSymbol = (gpsValue < 0) ? trailingSymbols[3] : trailingSymbols[2];  // W : E
             } else {
-//                trailingSymbol = (gpsValue < 0) ? 'S' : 'N';
-                (gpsValue < 0) ? strcpy(trailingSymbol, STR_OSDE_GPS_SOUTH) : strcpy(trailingSymbol, STR_OSDE_GPS_NORTH);
+                trailingSymbol = (gpsValue < 0) ? trailingSymbols[1] : trailingSymbols[0];  // S : N
             }
-            tfp_sprintf(buff, "%u%c%02u%c%02u.%u%c%s", degreesPart, SYM_GPS_DEGREE, minutes, SYM_GPS_MINUTE, seconds, tenthSeconds, SYM_GPS_SECOND, trailingSymbol);
+            tfp_sprintf(buff, "%u%c%02u%c%02u.%u%c%c", degreesPart, SYM_GPS_DEGREE, minutes, SYM_GPS_MINUTE, seconds, tenthSeconds, SYM_GPS_SECOND, trailingSymbol);
             break;
         }
 
@@ -1428,12 +1427,12 @@ static void osdElementPidRateProfile(osdElementParms_t *element)
 
 static void osdElementPidsPitch(osdElementParms_t *element)
 {
-    osdFormatPID(element->buff, STR_ODSE_ELEMENT_PIT, PID_PITCH);
+    osdFormatPID(element->buff, STR_ODSE_ELEMENT_PITCH, &currentPidProfile->pid[PID_PITCH]);
 }
 
 static void osdElementPidsRoll(osdElementParms_t *element)
 {
-    osdFormatPID(element->buff, STR_ODSE_ELEMENT_ROL, PID_ROLL);
+    osdFormatPID(element->buff, STR_ODSE_ELEMENT_ROLL, &currentPidProfile->pid[PID_ROLL]);
 }
 
 static void osdElementPidsYaw(osdElementParms_t *element)
