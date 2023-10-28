@@ -4760,12 +4760,8 @@ if (buildKey) {
         rxRate = (int)(1000000.0f / ((float)rxRate));
     }
     const int systemRate = getTaskDeltaTimeUs(TASK_SYSTEM) == 0 ? 0 : (int)(1000000.0f / ((float)getTaskDeltaTimeUs(TASK_SYSTEM)));
-    cliPrintLinef("CPU: %d%%, %s %d, %s %d, %s %d, %s %d",
-                  constrain(getAverageSystemLoadPercent(), 0, LOAD_PERCENTAGE_ONE), 
-                  STR_CLI_STATUS_CPU_CYCLE,  getTaskDeltaTimeUs(TASK_GYRO), 
-                  STR_CLI_STATUS_CPU_GYRO,   gyroRate, 
-                  STR_CLI_STATUS_CPU_RX,     rxRate, 
-                  STR_CLI_STATUS_CPU_SYSTEM, systemRate);
+    cliPrintLinef("CPU: %d%%, cycle time: %d, GYRO rate: %d, RX rate: %d, System rate: %d",
+            constrain(getAverageSystemLoadPercent(), 0, LOAD_PERCENTAGE_ONE), getTaskDeltaTimeUs(TASK_GYRO), gyroRate, rxRate, systemRate);
 
     // Battery meter
 
@@ -4791,7 +4787,6 @@ if (buildKey) {
     }
 #endif
 
-<<<<<<< HEAD
 #ifdef USE_GPS
     cliPrint("GPS: ");
     if (featureIsEnabled(FEATURE_GPS)) {
@@ -5740,7 +5735,7 @@ static void printTimerDetails(const ioTag_t ioTag, const unsigned timerIndex, co
     } else {
         printValue(dumpMask, equalsDefault, emptyFormat,
             IO_GPIOPortIdxByTag(ioTag) + 'A',
-            IO_GPIOPinIdxByTag(ioTag), "NONE"
+            IO_GPIOPinIdxByTag(ioTag)
         );
     }
 }
@@ -6105,7 +6100,6 @@ static void cliResource(const char *cmdName, char *cmdline)
 #endif
 
 #ifdef USE_DSHOT_TELEMETRY
-
 
 static void cliDshotTelemetryInfo(const char *cmdName, char *cmdline)
 {
