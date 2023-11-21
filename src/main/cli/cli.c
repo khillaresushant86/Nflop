@@ -127,6 +127,8 @@ bool cliMode = false;
 #include "msp/msp_box.h"
 #include "msp/msp_protocol.h"
 
+#include "locales/localisation.h"
+
 #include "osd/osd.h"
 
 #include "pg/adc.h"
@@ -4832,7 +4834,7 @@ if (buildKey) {
     cliPrintLinefeed();
 #endif // USE_GPS
 
-    cliPrintLinef("%s %s", STR_LOCALE_SETUP, STR_LOCALE);
+    cliPrintLinef("Language: %s", STR_LOCALE);
 
     cliPrint("Arming disable flags:");
     armingDisableFlags_e flags = getArmingDisableFlags();
