@@ -703,7 +703,7 @@ static void osdElementAngleRollPitch(osdElementParms_t *element)
 static void osdElementAntiGravity(osdElementParms_t *element)
 {
     if (pidOsdAntiGravityActive()) {
-        strcpy(element->buff, STR_ODSE_ANTIGRAVITY);
+        strcpy(element->buff, STR_OSDE_ANTIGRAVITY);
     }
 }
 
@@ -1007,21 +1007,21 @@ static void osdElementFlymode(osdElementParms_t *element)
     //  5. ACRO
 
     if (FLIGHT_MODE(FAILSAFE_MODE)) {
-        strcpy(element->buff, STR_ODSE_FLYMODE_FAILSAFE);
+        strcpy(element->buff, STR_OSDE_FLYMODE_FAILSAFE);
     } else if (FLIGHT_MODE(GPS_RESCUE_MODE)) {
-        strcpy(element->buff, STR_ODSE_FLYMODE_RESCUE);
+        strcpy(element->buff, STR_OSDE_FLYMODE_RESCUE);
     } else if (FLIGHT_MODE(HEADFREE_MODE)) {
-        strcpy(element->buff, STR_ODSE_FLYMODE_HEAD);
+        strcpy(element->buff, STR_OSDE_FLYMODE_HEAD);
     } else if (FLIGHT_MODE(ANGLE_MODE)) {
-        strcpy(element->buff, STR_ODSE_FLYMODE_ANGL);
+        strcpy(element->buff, STR_OSDE_FLYMODE_ANGL);
     } else if (FLIGHT_MODE(HORIZON_MODE)) {
-        strcpy(element->buff, STR_ODSE_FLYMODE_HOR);
+        strcpy(element->buff, STR_OSDE_FLYMODE_HOR);
     } else if (IS_RC_MODE_ACTIVE(BOXACROTRAINER)) {
-        strcpy(element->buff, STR_ODSE_FLYMODE_ATRN);
+        strcpy(element->buff, STR_OSDE_FLYMODE_ATRN);
     } else if (airmodeIsEnabled()) {
-        strcpy(element->buff, STR_ODSE_FLYMODE_AIR);
+        strcpy(element->buff, STR_OSDE_FLYMODE_AIR);
     } else {
-        strcpy(element->buff, STR_ODSE_FLYMODE_ACRO);
+        strcpy(element->buff, STR_OSDE_FLYMODE_ACRO);
     }
 }
 
@@ -1427,12 +1427,12 @@ static void osdElementPidRateProfile(osdElementParms_t *element)
 
 static void osdElementPidsPitch(osdElementParms_t *element)
 {
-    osdFormatPID(element->buff, STR_ODSE_ELEMENT_PITCH, &currentPidProfile->pid[PID_PITCH]);
+    osdFormatPID(element->buff, STR_OSDE_ELEMENT_PITCH, &currentPidProfile->pid[PID_PITCH]);
 }
 
 static void osdElementPidsRoll(osdElementParms_t *element)
 {
-    osdFormatPID(element->buff, STR_ODSE_ELEMENT_ROLL, &currentPidProfile->pid[PID_ROLL]);
+    osdFormatPID(element->buff, STR_OSDE_ELEMENT_ROLL, &currentPidProfile->pid[PID_ROLL]);
 }
 
 static void osdElementPidsYaw(osdElementParms_t *element)
