@@ -224,6 +224,13 @@ COMMON_SRC += \
 endif
 endif
 
+TRANSLATED_SRC = \
+            osd/osd.c \
+            osd/osd_elements.c \
+            osd/osd_warnings.c \
+            cli/cli.c \
+	    locales/localisation.c
+
 RX_SRC = \
             rx/cc2500_common.c \
             rx/cc2500_frsky_shared.c \
