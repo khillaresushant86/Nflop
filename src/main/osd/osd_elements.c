@@ -1427,17 +1427,17 @@ static void osdElementPidRateProfile(osdElementParms_t *element)
 
 static void osdElementPidsPitch(osdElementParms_t *element)
 {
-    osdFormatPID(element->buff, STR_OSDE_ELEMENT_PITCH, &currentPidProfile->pid[PID_PITCH]);
+    osdFormatPID(element->buff, STR_OSDE_ELEMENT_PITCH, PID_PITCH);
 }
 
 static void osdElementPidsRoll(osdElementParms_t *element)
 {
-    osdFormatPID(element->buff, STR_OSDE_ELEMENT_ROLL, &currentPidProfile->pid[PID_ROLL]);
+    osdFormatPID(element->buff, STR_OSDE_ELEMENT_ROLL, PID_ROLL);
 }
 
 static void osdElementPidsYaw(osdElementParms_t *element)
 {
-    osdFormatPID(element->buff, STR_ODSE_ELEMENT_YAW, PID_YAW);
+    osdFormatPID(element->buff, STR_OSDE_ELEMENT_YAW, PID_YAW);
 }
 
 static void osdElementPower(osdElementParms_t *element)
