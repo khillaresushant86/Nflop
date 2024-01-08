@@ -229,7 +229,7 @@ TRANSLATED_SRC = \
             osd/osd_elements.c \
             osd/osd_warnings.c \
             cli/cli.c \
-	    locales/localisation.c
+	        locales/localisation.c
 
 RX_SRC = \
             rx/cc2500_common.c \
