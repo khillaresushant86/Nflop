@@ -397,6 +397,26 @@ pid_unittest_DEFINES := \
 		USE_LAUNCH_CONTROL= \
 		USE_FEEDFORWARD=
 
+rc_unittest_SRC :=  \
+		$(USER_DIR)/common/crc.c \
+		$(USER_DIR)/common/filter.c \
+		$(USER_DIR)/common/maths.c \
+		$(USER_DIR)/common/streambuf.c \
+		$(USER_DIR)/drivers/accgyro/gyro_sync.c \
+		$(USER_DIR)/fc/controlrate_profile.c \
+		$(USER_DIR)/fc/rc.c \
+		$(USER_DIR)/fc/runtime_config.c \
+		$(USER_DIR)/flight/pid.c \
+		$(USER_DIR)/flight/pid_init.c \
+		$(USER_DIR)/pg/pg.c
+
+rc_unittest_DEFINES := \
+		USE_ITERM_RELAX= \
+		USE_RC_SMOOTHING_FILTER= \
+		USE_ABSOLUTE_CONTROL= \
+		USE_LAUNCH_CONTROL= \
+		USE_FEEDFORWARD=
+
 rcdevice_unittest_DEFINES := \
 		USE_RCDEVICE=
 
@@ -520,7 +540,7 @@ ifeq ($(shell $(CC) -v 2>&1 | grep -q "clang version" && echo "clang"),clang)
 # Please revisit versions when new clang version arrive. Supported versions: { Linux / OSX: 7 - 14 }
 # Travis reports CC_VERSION of 4.2.1
 CC_VERSION_MAJOR := $(firstword $(subst ., ,$(CC_VERSION)))
-CC_VERSION_CHECK_MIN := 7
+CC_VERSION_CHECK_MIN := 4
 CC_VERSION_CHECK_MAX := 14
 
 # Added flags for clang 11 - 13 are not backwards compatible
