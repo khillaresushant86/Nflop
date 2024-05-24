@@ -165,9 +165,9 @@ void pgResetFn_serialConfig(serialConfig_t *serialConfig)
 #endif
 
 #ifdef SERIALTX_UART
-    serialPortConfig_t *serialRxUartConfig = serialFindPortConfigurationMutable(SERIALTX_UART);
-    if (serialRxUartConfig) {
-        serialRxUartConfig->functionMask = FUNCTION_TX_SERIAL;
+    serialPortConfig_t *serialTxUartConfig = serialFindPortConfigurationMutable(SERIALTX_UART);
+    if (serialTxUartConfig) {
+        serialTxUartConfig->functionMask = FUNCTION_TX_SERIAL;
     }
 #endif
 
