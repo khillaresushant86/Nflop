@@ -31,6 +31,8 @@
 
 #include "fc/rc_controls.h"
 
+#include "pg/headtracker.h"
+
 #include "rx/rx.h"
 #include "rx/sbus.h"
 
@@ -40,6 +42,7 @@
 
 #if defined(USE_HEADTRACKER)
 static int16_t yawOffset = 1800;
+static IO_t headtrackerIO;
 
 #define SHIMMY_PERIOD 500000 // 500ms
 
@@ -51,7 +54,7 @@ void headtrackerYawReset(void)
 
 bool headtrackerInit(void)
 {
-    IO_t headtrackerIO = IOGetByTag(rxConfig()->headtracker_ioTag);
+    headtrackerIO = IOGetByTag(headtrackerConfig()->headtracker_ioTag);
 
     // Initialise the resource pin used for yaw reset
     if (headtrackerIO) {
@@ -67,14 +70,13 @@ void taskHeadtracker(uint32_t currentTime)
     UNUSED(currentTime);
     int16_t angles[3];
     uint16_t channels[3];
-    IO_t headtrackerIO = IOGetByTag(rxConfig()->headtracker_ioTag);
     float yawGyro = gyroGetFilteredDownsampled(YAW);
     static int8_t shimmyCount = 0;
     static uint32_t shimmyStartTime = 0;
 
     // Check for a head shimmy to reset yaw
-    if (rxConfig()->headtracker_yaw_shimmy_enable) {
-        uint16_t shimmyAmplitude = rxConfig()->headtracker_yaw_shimmy_amplitude;
+    if (headtrackerConfig()->headtracker_yaw_shimmy_enable) {
+        uint16_t shimmyAmplitude = headtrackerConfig()->headtracker_yaw_shimmy_amplitude;
 
         // Check for a head shimmy to reset the yaw
         if (cmpTimeUs(currentTime, shimmyStartTime) > SHIMMY_PERIOD) {
@@ -91,7 +93,7 @@ void taskHeadtracker(uint32_t currentTime)
         }
 
         // Check if the required number of shakes have been seen
-        if (shimmyCount == rxConfig()->headtracker_yaw_shimmy_count) {
+        if (shimmyCount == headtrackerConfig()->headtracker_yaw_shimmy_count) {
             shimmyCount = 0;
             headtrackerYawReset();
         }
@@ -109,9 +111,9 @@ void taskHeadtracker(uint32_t currentTime)
     angles[YAW] = (attitude.values.yaw + yawOffset) % 3600;
 
     // Limit the max angle of delection
-    if (rxConfig()->headtracker_max_angle) {
-        const int newValueMin = 1800 - rxConfig()->headtracker_max_angle * 10;
-        const int newValueMax = 1800 + rxConfig()->headtracker_max_angle * 10;
+    if (headtrackerConfig()->headtracker_max_angle) {
+        const int newValueMin = 1800 - headtrackerConfig()->headtracker_max_angle * 10;
+        const int newValueMax = 1800 + headtrackerConfig()->headtracker_max_angle * 10;
         for (int channel = 0; channel < 3; channel++) {
             angles[channel] = scaleRange(angles[channel], newValueMin, newValueMax, 0, 3600);
             angles[channel] = constrain(angles[channel], 0, 3600);

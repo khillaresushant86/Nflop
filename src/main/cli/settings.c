@@ -86,6 +86,7 @@
 #include "pg/dyn_notch.h"
 #include "pg/flash.h"
 #include "pg/gyrodev.h"
+#include "pg/headtracker.h"
 #include "pg/max7456.h"
 #include "pg/mco.h"
 #include "pg/motor.h"
@@ -773,10 +774,10 @@ const clivalue_t valueTable[] = {
     { "serialtx_inverted",           VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_OFF_ON }, PG_RX_CONFIG, offsetof(rxConfig_t, serialtx_inverted) },
 #endif
 #ifdef USE_HEADTRACKER
-    { "headtracker_max_angle",       VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, 180}, PG_RX_CONFIG, offsetof(rxConfig_t, headtracker_max_angle) },
-    { "headtracker_yaw_shimmy_enable", VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_OFF_ON }, PG_RX_CONFIG, offsetof(rxConfig_t, headtracker_yaw_shimmy_enable) },
-    { "headtracker_yaw_shimmy_amplitude", VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 50, 500}, PG_RX_CONFIG, offsetof(rxConfig_t, headtracker_yaw_shimmy_amplitude) },
-    { "headtracker_yaw_shimmy_count", VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 3, 10}, PG_RX_CONFIG, offsetof(rxConfig_t, headtracker_yaw_shimmy_count) },
+    { "headtracker_max_angle",       VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 0, 180}, PG_RX_CONFIG, offsetof(headtrackerConfig_t, headtracker_max_angle) },
+    { "headtracker_yaw_shimmy_enable", VAR_UINT8  | MASTER_VALUE | MODE_LOOKUP, .config.lookup = { TABLE_OFF_ON }, PG_RX_CONFIG, offsetof(headtrackerConfig_t, headtracker_yaw_shimmy_enable) },
+    { "headtracker_yaw_shimmy_amplitude", VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 50, 500}, PG_RX_CONFIG, offsetof(headtrackerConfig_t, headtracker_yaw_shimmy_amplitude) },
+    { "headtracker_yaw_shimmy_count", VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { 3, 10}, PG_RX_CONFIG, offsetof(headtrackerConfig_t, headtracker_yaw_shimmy_count) },
 #endif
 #ifdef USE_SPEKTRUM_BIND
     { "spektrum_sat_bind",           VAR_UINT8  | MASTER_VALUE, .config.minmaxUnsigned = { SPEKTRUM_SAT_BIND_DISABLED, SPEKTRUM_SAT_BIND_MAX}, PG_RX_CONFIG, offsetof(rxConfig_t, spektrum_sat_bind) },

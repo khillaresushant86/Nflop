@@ -371,7 +371,7 @@ task_attribute_t task_attributes[TASK_COUNT] = {
 
     [TASK_RX] = DEFINE_TASK("RX", NULL, rxUpdateCheck, taskUpdateRxMain, TASK_PERIOD_HZ(33), TASK_PRIORITY_HIGH), // If event-based scheduling doesn't work, fallback to periodic scheduling
 
-    #if defined(USE_HEADTRACKER) && defined(USE_SERIALTX)
+#if defined(USE_HEADTRACKER) && defined(USE_SERIALTX)
     // Run the SBus output task at 14ms intervals for standard rate
     [TASK_HEADTRACKER] = DEFINE_TASK("HEADTRACKER", NULL, NULL, taskHeadtracker, 14000, TASK_PRIORITY_MEDIUM),
 #endif
