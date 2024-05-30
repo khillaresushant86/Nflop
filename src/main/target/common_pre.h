@@ -172,10 +172,6 @@
 
 #define USE_PINIO
 
-#if !defined(USE_SERIALTX) && defined(USE_HEADTRACKER)
-#define USE_SERIALTX
-#endif
-
 #if !defined(USE_SERIALRX)
 
 #define USE_SERIALRX
@@ -434,6 +430,10 @@
 #endif
 
 #endif // defined(USE_SERIALRX_CRSF)
+
+#if !defined(USE_SERIALTX) && defined(USE_HEADTRACKER)
+#define USE_SERIALTX
+#endif
 
 // USE_RACE_PRO feature pack
 #ifdef USE_RACE_PRO
