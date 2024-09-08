@@ -48,6 +48,7 @@
 #include "io/beeper.h"
 #include "io/usb_cdc_hid.h"
 #include "io/dashboard.h"
+#include "io/gimbal_control.h"
 #include "io/gps.h"
 #include "io/vtx_control.h"
 
@@ -140,6 +141,13 @@ void processRcStickPositions(void)
     static uint8_t rcDisarmTicks;
     static bool doNotRepeat;
     static bool pendingApplyRollAndPitchTrimDeltaSave = false;
+
+#ifdef USE_GIMBAL
+    gimbalTrack(rcData[THROTTLE] - rxConfig()->midrc,
+                rcData[ROLL] - rxConfig()->midrc,
+                rcData[PITCH] - rxConfig()->midrc,
+                rcData[YAW] - rxConfig()->midrc);
+#endif
 
     // checking sticks positions
     uint8_t stTmp = 0;
