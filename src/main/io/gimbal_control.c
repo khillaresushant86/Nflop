@@ -44,6 +44,28 @@
 
 #include "scheduler/scheduler.h"
 
+/* The setting below accommodate both -ve and +ve setting so the gimbal can be mounted either  way up.
+ *
+ * |------------------------|-----|------------|----------------------------------------------------------------------------------------|
+ * | Setting                | Def | Range      | Purpose                                                                                |
+ * |------------------------|-----|------------|----------------------------------------------------------------------------------------|
+ * | gimbal_roll_gain       | 40  | -100 - 100 | Adjusts amount of roll in %                                                            |
+ * | gimbal_roll_offset     | 0   | -100 - 100 | Adjust roll position for neutral roll input                                            |
+ * | gimbal_pitch_thr_gain  | 10  | -100 - 100 | Adjusts amount of pitch increase for throttle input in %                               |
+ * | gimbal_pitch_low_gain  | 20  | -100 - 100 | Adjusts amount of pitch increase for low pitch input in %                              |
+ * | gimbal_pitch_high_gain | -10 | -100 - 100 | Adjusts amount of pitch decrease for high pitch input in %                             |
+ * | gimbal_pitch_offset    | 10  | -100 - 100 | Adjust pitch position for neutral pitch input                                          |
+ * | gimbal_yaw_gain        | 20  | -100 - 100 | Adjusts amount of yaw in %                                                             |
+ * | gimbal_yaw_offset      | 0   | -100 - 100 | Adjust yaw position for neutral yaw input                                              |
+ * | gimbal_stabilisation   | 0   |    0 - 7   | 0 no stabilisation, 1 pitch stabilisation, 2 roll/pitch stabilisation, 3 - 7 reserved  |
+ * | gimbal_sensitivity     | 15  |  -16 - 15  | With higher values camera more rigidly tracks quad motion                              |
+ * |------------------------|-----|------------|----------------------------------------------------------------------------------------|
+ *
+ * To enable the gimbal control on a port set bit 18 thus:
+ *
+ *  serial <port> 262144 115200 57600 0 115200
+ */
+
 #define GIMBAL_CMD_NONE               0x00  //empty order
 #define GIMBAL_CMD_ACCE_CALIB         0x01  //Acceleration Calibration
 #define GIMBAL_CMD_GYRO_CALIB         0x02  //Gyro Calibration
@@ -55,74 +77,70 @@
 #define GIMBAL_STATUS_ERR             0x80
 
 // This packet is sent to control the gimbal mode, sensivity and position
-#define GIMBAL_CMD_S0  0xA5
-#define GIMBAL_CMD_S1  0x5A
+#define GIMBAL_CMD_S  0x5AA5
 typedef struct {
-    uint8_t  opcode[2];
-    uint64_t mode:3;     // Mode [0~7] Only 0 1 2 modes are supported
-    int64_t  sens:5;     // Sensitivity [-16~15]
-    uint64_t padding:4;
-    int64_t  roll:12;   // Roll angle [-2048~2047] - ±180deg
-    int64_t  pitch:12;  // Pich angle [-2048~2047] - ±180deg
-    int64_t  yaw:12;    // Yaw angle [-2048~2047]  - ±180deg
-    uint64_t crch:8;
-    uint64_t crcl:8;
+    uint16_t opcode;
+    unsigned mode:3;     // Mode [0~7] Only 0 1 2 modes are supported
+    signed   sens:5;     // Sensitivity [-16~15]
+    unsigned padding:4;
+    signed   roll:12;   // Roll angle [-2048~2047] - ±180deg
+    signed   pitch:12;  // Pich angle [-2048~2047] - ±180deg
+    signed   yaw:12;    // Yaw angle [-2048~2047]  - ±180deg
+    uint16_t crc;
 }  __attribute__ ((__packed__)) gimbalCmd_t;
 
 /* This packet is sent by the user to the head chase to realize the head
  * chase calibration and reset function
  */
-#define GIMBAL_CMD_L0  0xC5
-#define GIMBAL_CMD_L1  0x6E
+#define GIMBAL_CMD_L  0x6EC5
 typedef struct {
-    uint8_t opcode[2];
-    uint8_t cmd;        // Command
-    uint8_t pwm:5;      // Pulse width data [0~31] => [0%~100%]
-    uint8_t iom:3;      // GPIO mode [0~7]
-    uint8_t mode:3;     // Mode [0~7] Only 0 1 2 modes are supported
-    int8_t  sens:5;     // Sensitivity [-16~15]
+    uint16_t opcode;
+    uint8_t  cmd;        // Command
+    unsigned pwm:5;      // Pulse width data [0~31] => [0%~100%]
+    unsigned iom:3;      // GPIO mode [0~7]
+    unsigned mode:3;     // Mode [0~7] Only 0 1 2 modes are supported
+    signed   sens:5;     // Sensitivity [-16~15]
     struct
     {
-        uint32_t chan:3;  // Channel [0~7] [CH56,CH57,CH58,CH67,CH68,CH78,CH78,CH78]
-        uint32_t revs:2;  // Reverse [0~3] [Normal, Horizontal Reverse, Vertical Reverse, All Reverse]
-        uint32_t rngx:2;  // Range [0~3] [90 degrees, 120 degrees, 180 degrees, 360 degrees]
-        uint32_t rngy:2;  // Range [0~3] [60 degrees, 90 degrees, 120 degrees, 180 degrees]
-        int32_t  zerx:6;  // Zero [-32~31] [Resolution:5us]
-        int32_t  zery:6;  // Zero [-32~31] [Resolution:5us]
-        uint32_t padding:11;
+        unsigned chan:3;  // Channel [0~7] [CH56,CH57,CH58,CH67,CH68,CH78,CH78,CH78]
+        unsigned revs:2;  // Reverse [0~3] [Normal, Horizontal Reverse, Vertical Reverse, All Reverse]
+        unsigned rngx:2;  // Range [0~3] [90 degrees, 120 degrees, 180 degrees, 360 degrees]
+        unsigned rngy:2;  // Range [0~3] [60 degrees, 90 degrees, 120 degrees, 180 degrees]
+        signed   zerx:6;  // Zero [-32~31] [Resolution:5us]
+        signed   zery:6;  // Zero [-32~31] [Resolution:5us]
+        unsigned padding:11;
     } ppm;
     uint8_t padding2[5];
-    uint64_t crch:8;
-    uint64_t crcl:8;
+    uint16_t crc;
 }  __attribute__ ((__packed__)) gimbalCal_t;
 
 // Status reponse packet
-#define GIMBAL_STAT0  0x3A
-#define GIMBAL_STAT1  0x91
+#define GIMBAL_STAT  0x913A
 typedef struct {
-    uint8_t opcode[2];
+    uint16_t opcode;
     uint8_t cmd;        // Command response status
     uint8_t ctyp;       // Calibration type [0:Idle 1:Acceleration calibration 2:Gyroscope calibration 3:Magnetometer calibration]
     uint8_t cprg;       // Calibration progress [0%~100%]
     uint8_t cerr;       // Calibration error [0%~100%]
     uint8_t padding[8];
-    uint64_t crch:8;
-    uint64_t crcl:8;
+    uint16_t crc;
 }  __attribute__ ((__packed__)) gimbalCalStatus_t;
 
-#define GIMBAL_ROLL_MIN -500
-#define GIMBAL_ROLL_MAX 500
-#define GIMBAL_PITCH_MIN -1150
-#define GIMBAL_PITCH_MAX 1750
-#define GIMBAL_YAW_MIN -2047
-#define GIMBAL_YAW_MAX 2047
+#define GIMBAL_SET_MIN      -500
+#define GIMBAL_SET_MAX      500
+#define GIMBAL_ROLL_MIN     -500
+#define GIMBAL_ROLL_MAX     500
+#define GIMBAL_PITCH_MIN    -1150
+#define GIMBAL_PITCH_MAX    1750
+#define GIMBAL_YAW_MIN      -2047
+#define GIMBAL_YAW_MAX      2047
 
 static gimbalCmd_t gimbalCmd = {0};
 static serialPort_t *gimbalSerialPort = NULL;
 
 static uint16_t gimbalCrc(uint8_t *buf, uint32_t size)
 {
-    return crc16_ccitt_update(0x0000, buf, size);
+    return __builtin_bswap16(crc16_ccitt_update(0x0000, buf, size));
 }
 
 // Set the gimbal position on each axis in a ±500 range
@@ -137,9 +155,9 @@ bool gimbalSet(int16_t roll, int16_t pitch, int16_t yaw)
     }
 
     // Scale the incoming ±500 range to the max values accepted by the gimbal
-    roll = ((GIMBAL_ROLL_MAX + GIMBAL_ROLL_MIN) / 2) + ((GIMBAL_ROLL_MAX - GIMBAL_ROLL_MIN) * roll / 1000);
-    pitch = ((GIMBAL_PITCH_MAX + GIMBAL_PITCH_MIN) / 2) - ((GIMBAL_PITCH_MAX - GIMBAL_PITCH_MIN) * pitch / 1000);
-    yaw = ((GIMBAL_YAW_MAX + GIMBAL_YAW_MIN) / 2) + ((GIMBAL_YAW_MAX - GIMBAL_YAW_MIN) * yaw / 1000);
+    roll  = scaleRange(roll,  GIMBAL_SET_MIN, GIMBAL_SET_MAX, GIMBAL_ROLL_MIN,  GIMBAL_ROLL_MAX);
+    pitch = scaleRange(pitch, GIMBAL_SET_MIN, GIMBAL_SET_MAX, GIMBAL_PITCH_MAX, GIMBAL_PITCH_MIN);
+    yaw   = scaleRange(yaw,   GIMBAL_SET_MIN, GIMBAL_SET_MAX, GIMBAL_YAW_MIN,   GIMBAL_YAW_MAX);
 
     // Constrain to catch any incoming out of range values
     gimbalCmd.roll = constrain(roll, GIMBAL_ROLL_MIN, GIMBAL_ROLL_MAX);
@@ -155,8 +173,7 @@ bool gimbalSet(int16_t roll, int16_t pitch, int16_t yaw)
 
     uint16_t crc = gimbalCrc((uint8_t *)&gimbalCmd, sizeof(gimbalCmd) - 2);
 
-    gimbalCmd.crch = (crc >> 8) & 0xff;
-    gimbalCmd.crcl = crc & 0xff;
+    gimbalCmd.crc = crc;
 
     return true;
 }
@@ -207,16 +224,10 @@ bool gimbalInit(void)
                                       NULL, NULL,
                                       115200, MODE_RXTX, SERIAL_STOPBITS_1 | SERIAL_PARITY_NO);
 
-    gimbalCmd.opcode[0] = GIMBAL_CMD_S0;
-    gimbalCmd.opcode[1] = GIMBAL_CMD_S1;
+    gimbalCmd.opcode = GIMBAL_CMD_S;
 
-    gimbalCmd.mode = gimbalTrackConfig()->gimbal_stabilisation;
-    gimbalCmd.sens = gimbalTrackConfig()->gimbal_sensitivity;
-
-    uint16_t crc = gimbalCrc((uint8_t *)&gimbalCmd, sizeof(gimbalCmd) - 2);
-
-    gimbalCmd.crch = (crc >> 8) & 0xff;
-    gimbalCmd.crcl = crc & 0xff;
+    // Set gimbal initial position
+    gimbalSet(0, 0, 0);
 
     return true;
 }
