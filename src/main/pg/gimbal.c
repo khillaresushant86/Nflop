@@ -32,15 +32,22 @@ PG_REGISTER_WITH_RESET_TEMPLATE(gimbalTrackConfig_t, gimbalTrackConfig, PG_GIMBA
 
 PG_RESET_TEMPLATE(gimbalTrackConfig_t, gimbalTrackConfig,
     // Default to full gain and no offset
-    .gimbal_roll_gain   = 40,
-    .gimbal_roll_offset = 0,
-    .gimbal_pitch_thr_gain  = 10,
-    .gimbal_pitch_low_gain  = 20,
-    .gimbal_pitch_high_gain = -10,
-    .gimbal_pitch_offset = 10,
-    .gimbal_yaw_gain    = 20,
-    .gimbal_yaw_offset  = 0,
-    .gimbal_stabilisation = 0,
-    .gimbal_sensitivity = 15
+    .gimbal_roll_rc_gain        = 40,
+    .gimbal_pitch_rc_thr_gain   = 10,
+    .gimbal_pitch_rc_low_gain   = 10,
+    .gimbal_pitch_rc_high_gain  = -20,
+    .gimbal_yaw_rc_gain         = 20,
+    .gimbal_roll_gain           = 100,
+    .gimbal_roll_offset         = 0,
+    .gimbal_roll_limit          = 100,
+    .gimbal_pitch_gain          = 50,
+    .gimbal_pitch_offset        = -10,
+    .gimbal_pitch_low_limit     = 100,
+    .gimbal_pitch_high_limit    = 100,
+    .gimbal_yaw_gain            = 50,
+    .gimbal_yaw_offset          = 0,
+    .gimbal_yaw_limit           = 100,
+    .gimbal_stabilisation       = 0,
+    .gimbal_sensitivity         = 15
 );
 #endif

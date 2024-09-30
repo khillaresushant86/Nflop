@@ -36,30 +36,41 @@
 
 #include "drivers/time.h"
 
+#include "fc/rc_controls.h"
+
 #include "io/serial.h"
 
 #include "pg/pg.h"
 #include "pg/pg_ids.h"
 #include "pg/gimbal.h"
 
+#include "rx/rx.h"
+
 #include "scheduler/scheduler.h"
 
 /* The setting below accommodate both -ve and +ve setting so the gimbal can be mounted either  way up.
  *
- * |------------------------|-----|------------|----------------------------------------------------------------------------------------|
- * | Setting                | Def | Range      | Purpose                                                                                |
- * |------------------------|-----|------------|----------------------------------------------------------------------------------------|
- * | gimbal_roll_gain       | 40  | -100 - 100 | Adjusts amount of roll in %                                                            |
- * | gimbal_roll_offset     | 0   | -100 - 100 | Adjust roll position for neutral roll input                                            |
- * | gimbal_pitch_thr_gain  | 10  | -100 - 100 | Adjusts amount of pitch increase for throttle input in %                               |
- * | gimbal_pitch_low_gain  | 20  | -100 - 100 | Adjusts amount of pitch increase for low pitch input in %                              |
- * | gimbal_pitch_high_gain | -10 | -100 - 100 | Adjusts amount of pitch decrease for high pitch input in %                             |
- * | gimbal_pitch_offset    | 10  | -100 - 100 | Adjust pitch position for neutral pitch input                                          |
- * | gimbal_yaw_gain        | 20  | -100 - 100 | Adjusts amount of yaw in %                                                             |
- * | gimbal_yaw_offset      | 0   | -100 - 100 | Adjust yaw position for neutral yaw input                                              |
- * | gimbal_stabilisation   | 0   |    0 - 7   | 0 no stabilisation, 1 pitch stabilisation, 2 roll/pitch stabilisation, 3 - 7 reserved  |
- * | gimbal_sensitivity     | 15  |  -16 - 15  | With higher values camera more rigidly tracks quad motion                              |
- * |------------------------|-----|------------|----------------------------------------------------------------------------------------|
+ * |---------------------------|-----|------------|----------------------------------------------------------------------------------------|
+ * | Setting                   | Def | Range      | Purpose                                                                                |
+ * |---------------------------|-----|------------|----------------------------------------------------------------------------------------|
+ * | gimbal_roll_rc_gain       | 40  | -100 - 100 | Adjusts amount of roll in % from RC roll channel                                       |
+ * | gimbal_pitch_rc_thr_gain  | 10  | -100 - 100 | Adjusts amount of pitch increase for input in % from RC throttle channel               |
+ * | gimbal_pitch_rc_low_gain  | 10  | -100 - 100 | Adjusts amount of pitch increase for low pitch input in % from RC pitch channel        |
+ * | gimbal_pitch_rc_high_gain | -20 | -100 - 100 | Adjusts amount of pitch decrease for high pitch input in % from RC pitch channel       |
+ * | gimbal_yaw_rc_gain        | 20  | -100 - 100 | Adjusts amount of yaw in % from RC yaw channel                                         |
+ * | gimbal_roll_gain          | 100 | -100 - 100 | Adjusts amount of roll in %                                                            |
+ * | gimbal_roll_offset        | 0   | -100 - 100 | Adjust roll position for neutral roll input                                            |
+ * | gimbal_roll_limit         | 100 |    0 - 100 | Adjusts roll range as a % of maximum                                                   |
+ * | gimbal_pitch_gain         | 50  | -100 - 100 | Adjusts amount of pitch in %                                                           |
+ * | gimbal_pitch_offset       | -10 | -100 - 100 | Adjust pitch position for neutral pitch input                                          |
+ * | gimbal_pitch_low_limit    | 100 |    0 - 100 | Adjusts low pitch range as a % of maximum                                              |
+ * | gimbal_pitch_high_limit   | 100 |    0 - 100 | Adjusts high pitch range as a % of maximum                                             |
+ * | gimbal_yaw_gain           | 50  | -100 - 100 | Adjusts amount of yaw in %                                                             |
+ * | gimbal_yaw_offset         | 0   | -100 - 100 | Adjust yaw position for neutral yaw input                                              |
+ * | gimbal_yaw_limit          | 100 |    0 - 100 | Adjusts yaw range as a % of maximum                                                    |
+ * | gimbal_stabilisation      | 0   |    0 - 7   | 0 no stabilisation, 1 pitch stabilisation, 2 roll/pitch stabilisation, 3 - 7 reserved  |
+ * | gimbal_sensitivity        | 15  |  -16 - 15  | With higher values camera more rigidly tracks quad motion                              |
+ * |---------------------------|-----|------------|----------------------------------------------------------------------------------------|
  *
  * To enable the gimbal control on a port set bit 18 thus:
  *
@@ -126,8 +137,17 @@ typedef struct {
     uint16_t crc;
 }  __attribute__ ((__packed__)) gimbalCalStatus_t;
 
-#define GIMBAL_SET_MIN      -500
-#define GIMBAL_SET_MAX      500
+// Expected input range from RC channels
+#define GIMBAL_RC_SET_MIN   -500
+#define GIMBAL_RC_SET_MAX    500
+
+// Expect input range from head-tracker
+#define GIMBAL_SET_MIN      -2047
+#define GIMBAL_SET_MAX      2047
+#define GIMBAL_SET_ROLL_MIN -900
+#define GIMBAL_SET_ROLL_MAX  900
+
+// Output range for full scale deflection to gimbal
 #define GIMBAL_ROLL_MIN     -500
 #define GIMBAL_ROLL_MAX     500
 #define GIMBAL_PITCH_MIN    -1150
@@ -135,7 +155,18 @@ typedef struct {
 #define GIMBAL_YAW_MIN      -2047
 #define GIMBAL_YAW_MAX      2047
 
-static gimbalCmd_t gimbalCmd = {0};
+// Timeout after which headtracker input is ignored
+#define GIMBAL_HT_TIMEOUT_US 250000
+
+static struct {
+    union {
+        gimbalCmd_t gimbalCmd;
+        uint8_t     bytes[sizeof(gimbalCmd_t)];
+    } u;
+} gimbalCmdIn;
+static uint32_t gimbalInCount = 0;
+
+static gimbalCmd_t gimbalCmdOut = {0};
 static serialPort_t *gimbalSerialPort = NULL;
 
 static uint16_t gimbalCrc(uint8_t *buf, uint32_t size)
@@ -143,73 +174,132 @@ static uint16_t gimbalCrc(uint8_t *buf, uint32_t size)
     return __builtin_bswap16(crc16_ccitt_update(0x0000, buf, size));
 }
 
-// Set the gimbal position on each axis in a ±500 range
-bool gimbalSet(int16_t roll, int16_t pitch, int16_t yaw)
+// Set the gimbal position on each axis
+static bool gimbalSet(int16_t headtracker_roll, int16_t headtracker_pitch, int16_t headtracker_yaw)
 {
-    DEBUG_SET(DEBUG_GIMBAL, 0, roll);
-    DEBUG_SET(DEBUG_GIMBAL, 1, pitch);
-    DEBUG_SET(DEBUG_GIMBAL, 2, yaw);
+    DEBUG_SET(DEBUG_GIMBAL, 0, headtracker_roll);
+    DEBUG_SET(DEBUG_GIMBAL, 1, headtracker_pitch);
+    DEBUG_SET(DEBUG_GIMBAL, 2, headtracker_yaw);
 
     if (!gimbalSerialPort) {
         return false;
     }
 
-    // Scale the incoming ±500 range to the max values accepted by the gimbal
-    roll  = scaleRange(roll,  GIMBAL_SET_MIN, GIMBAL_SET_MAX, GIMBAL_ROLL_MIN,  GIMBAL_ROLL_MAX);
-    pitch = scaleRange(pitch, GIMBAL_SET_MIN, GIMBAL_SET_MAX, GIMBAL_PITCH_MAX, GIMBAL_PITCH_MIN);
-    yaw   = scaleRange(yaw,   GIMBAL_SET_MIN, GIMBAL_SET_MAX, GIMBAL_YAW_MIN,   GIMBAL_YAW_MAX);
+    // Scale the expected incoming range to the max values accepted by the gimbal
+    int16_t roll  = scaleRange(headtracker_roll,  GIMBAL_SET_ROLL_MIN, GIMBAL_SET_ROLL_MAX,
+                                                  GIMBAL_ROLL_MIN * gimbalTrackConfig()->gimbal_roll_gain / 100,
+                                                  GIMBAL_ROLL_MAX * gimbalTrackConfig()->gimbal_roll_gain / 100);
+    int16_t pitch = scaleRange(headtracker_pitch, GIMBAL_SET_MIN, GIMBAL_SET_MAX,
+                                                  GIMBAL_PITCH_MIN * gimbalTrackConfig()->gimbal_pitch_gain / 100,
+                                                  GIMBAL_PITCH_MAX * gimbalTrackConfig()->gimbal_pitch_gain / 100);
+    int16_t yaw   = scaleRange(headtracker_yaw,   GIMBAL_SET_MIN, GIMBAL_SET_MAX,
+                                                  GIMBAL_YAW_MIN * gimbalTrackConfig()->gimbal_yaw_gain / 100,
+                                                  GIMBAL_YAW_MAX * gimbalTrackConfig()->gimbal_yaw_gain / 100);
 
-    // Constrain to catch any incoming out of range values
-    gimbalCmd.roll = constrain(roll, GIMBAL_ROLL_MIN, GIMBAL_ROLL_MAX);
-    gimbalCmd.pitch = constrain(pitch, GIMBAL_PITCH_MIN, GIMBAL_PITCH_MAX);
-    gimbalCmd.yaw = constrain(yaw, GIMBAL_YAW_MIN, GIMBAL_YAW_MAX);
 
-    DEBUG_SET(DEBUG_GIMBAL, 3, gimbalCmd.roll);
-    DEBUG_SET(DEBUG_GIMBAL, 4, gimbalCmd.pitch);
-    DEBUG_SET(DEBUG_GIMBAL, 5, gimbalCmd.yaw);
+    // Scale the RC stick inputs and add
+    roll  += scaleRange(rcData[ROLL] - rxConfig()->midrc, GIMBAL_RC_SET_MIN, GIMBAL_RC_SET_MAX,
+                        GIMBAL_ROLL_MIN * gimbalTrackConfig()->gimbal_roll_rc_gain / 100,
+                        GIMBAL_ROLL_MAX * gimbalTrackConfig()->gimbal_roll_rc_gain / 100);
+    if (rcData[PITCH] < rxConfig()->midrc) {
+        pitch += scaleRange(rcData[PITCH] - rxConfig()->midrc, GIMBAL_RC_SET_MIN, 0,
+                            GIMBAL_PITCH_MAX * gimbalTrackConfig()->gimbal_pitch_rc_low_gain / 100,
+                            0);
+    } else {
+        pitch += scaleRange(rcData[PITCH] - rxConfig()->midrc, 0, GIMBAL_RC_SET_MAX,
+                            0,
+                            GIMBAL_PITCH_MIN * gimbalTrackConfig()->gimbal_pitch_rc_high_gain / 100);
+    }
+    yaw   += scaleRange(rcData[YAW] - rxConfig()->midrc, GIMBAL_RC_SET_MIN, GIMBAL_RC_SET_MAX,
+                        GIMBAL_YAW_MIN * gimbalTrackConfig()->gimbal_yaw_rc_gain / 100,
+                        GIMBAL_YAW_MAX * gimbalTrackConfig()->gimbal_yaw_rc_gain / 100);
 
-    gimbalCmd.mode = gimbalTrackConfig()->gimbal_stabilisation;
-    gimbalCmd.sens = gimbalTrackConfig()->gimbal_sensitivity;
+    pitch += scaleRange(rcData[THROTTLE] - rxConfig()->midrc, GIMBAL_RC_SET_MIN, GIMBAL_RC_SET_MAX,
+                        GIMBAL_PITCH_MIN * gimbalTrackConfig()->gimbal_pitch_rc_thr_gain / 100,
+                        GIMBAL_PITCH_MAX * gimbalTrackConfig()->gimbal_pitch_rc_thr_gain / 100);
 
-    uint16_t crc = gimbalCrc((uint8_t *)&gimbalCmd, sizeof(gimbalCmd) - 2);
+    // Apply offsets
+    roll  += GIMBAL_ROLL_MAX * gimbalTrackConfig()->gimbal_roll_offset / 100;
+    pitch += GIMBAL_PITCH_MAX * gimbalTrackConfig()->gimbal_pitch_offset / 100;
+    yaw   += GIMBAL_YAW_MAX * gimbalTrackConfig()->gimbal_yaw_offset / 100;
 
-    gimbalCmd.crc = crc;
+    DEBUG_SET(DEBUG_GIMBAL, 3, roll);
+    DEBUG_SET(DEBUG_GIMBAL, 4, pitch);
+    DEBUG_SET(DEBUG_GIMBAL, 5, yaw);
+
+    // Constrain to set limits
+    gimbalCmdOut.roll  = constrain(roll, GIMBAL_ROLL_MIN * gimbalTrackConfig()->gimbal_roll_limit / 100,
+                                         GIMBAL_ROLL_MAX * gimbalTrackConfig()->gimbal_roll_limit / 100);
+    gimbalCmdOut.pitch = constrain(pitch, GIMBAL_PITCH_MIN * gimbalTrackConfig()->gimbal_pitch_low_limit / 100,
+                                          GIMBAL_PITCH_MAX * gimbalTrackConfig()->gimbal_pitch_high_limit / 100);
+    gimbalCmdOut.yaw   = constrain(yaw, GIMBAL_YAW_MIN * gimbalTrackConfig()->gimbal_yaw_limit / 100,
+                                        GIMBAL_YAW_MAX * gimbalTrackConfig()->gimbal_yaw_limit / 100);
+
+    gimbalCmdOut.mode = gimbalTrackConfig()->gimbal_stabilisation;
+    gimbalCmdOut.sens = gimbalTrackConfig()->gimbal_sensitivity;
+
+    uint16_t crc = gimbalCrc((uint8_t *)&gimbalCmdOut, sizeof(gimbalCmdOut) - 2);
+
+    gimbalCmdOut.crc = crc;
 
     return true;
-}
-
-// Set the gimbal position on each axis in a ±500 range with scale and offset applied
-bool gimbalTrack(int16_t throttle, int16_t roll, int16_t pitch, int16_t yaw)
-{
-    int16_t gimbal_roll;
-    int16_t gimbal_pitch;
-    int16_t gimbal_yaw;
-
-    // Apply scale an offset, each of which are expressed as a percentage
-    gimbal_roll = (roll * gimbalTrackConfig()->gimbal_roll_gain / 100) + 5 * gimbalTrackConfig()->gimbal_roll_offset;
-    gimbal_yaw = (yaw * gimbalTrackConfig()->gimbal_yaw_gain / 100) + 5 * gimbalTrackConfig()->gimbal_yaw_offset;
-
-    if (pitch < 0) {
-        gimbal_pitch = pitch * gimbalTrackConfig()->gimbal_pitch_low_gain / 100;
-    } else {
-        gimbal_pitch = pitch * gimbalTrackConfig()->gimbal_pitch_high_gain / 100;
-    }
-
-    gimbal_pitch += 5 * gimbalTrackConfig()->gimbal_pitch_offset - (throttle * gimbalTrackConfig()->gimbal_pitch_thr_gain / 100);
-
-    return gimbalSet(gimbal_roll, gimbal_pitch, gimbal_yaw);
 }
 
 // Gimbal updates should be sent at 100Hz or the gimbal will self center after approx. 2 seconds
 void gimbalUpdate(timeUs_t currentTimeUs)
 {
-    UNUSED(currentTimeUs);
+    static enum {GIMBAL_OP1, GIMBAL_OP2, GIMBAL_CMD} gimbalParseState = GIMBAL_OP1;
+    static timeUs_t lastRxTimeUs = 0;
 
     if (!gimbalSerialPort) {
         setTaskEnabled(TASK_GIMBAL, false);
         return;
     }
-    serialWriteBuf(gimbalSerialPort, (uint8_t *)&gimbalCmd, sizeof(gimbalCmd));
+
+    // Read bytes from the VTX gimbal serial data stream
+
+    uint32_t bytes =  serialRxBytesWaiting(gimbalSerialPort);
+
+    if (bytes > 0) {
+        lastRxTimeUs = currentTimeUs;
+        while (bytes--) {
+            uint8_t inData = serialRead(gimbalSerialPort);
+
+            // If the packet is a gimbalCmd_t structure then parse, otherwise pass through
+            switch (gimbalParseState) {
+            default:
+            case GIMBAL_OP1:
+                if (inData == (GIMBAL_CMD_S & 0xff)) {
+                    gimbalParseState = GIMBAL_OP2;
+                } else {
+                    serialWrite(gimbalSerialPort, inData);
+                }
+                break;
+            case GIMBAL_OP2:
+                if (inData == ((GIMBAL_CMD_S >> 8) & 0xff)) {
+                    gimbalParseState = GIMBAL_CMD;
+                    gimbalInCount = sizeof(gimbalCmdIn.u.gimbalCmd.opcode);
+                } else {
+                    serialWrite(gimbalSerialPort, GIMBAL_CMD_S && 0xff);
+                    serialWrite(gimbalSerialPort, inData);
+                    gimbalParseState = GIMBAL_OP1;
+                }
+                break;
+            case GIMBAL_CMD:
+                gimbalCmdIn.u.bytes[gimbalInCount++] = inData;
+                if (gimbalInCount == sizeof(gimbalCmdIn.u.gimbalCmd)) {
+                    gimbalCmdOut = gimbalCmdIn.u.gimbalCmd;
+                    gimbalSet(gimbalCmdIn.u.gimbalCmd.roll, gimbalCmdIn.u.gimbalCmd.pitch, gimbalCmdIn.u.gimbalCmd.yaw);
+                    serialWriteBuf(gimbalSerialPort, (uint8_t *)&gimbalCmdOut, sizeof(gimbalCmdOut));
+                    gimbalParseState = GIMBAL_OP1;
+                }
+                break;
+            }
+        }
+    } else if (cmpTimeUs(currentTimeUs, lastRxTimeUs) > GIMBAL_HT_TIMEOUT_US) {
+        gimbalSet(0, 0, 0);
+        serialWriteBuf(gimbalSerialPort, (uint8_t *)&gimbalCmdOut, sizeof(gimbalCmdOut));
+    }
 }
 
 bool gimbalInit(void)
@@ -224,7 +314,8 @@ bool gimbalInit(void)
                                       NULL, NULL,
                                       115200, MODE_RXTX, SERIAL_STOPBITS_1 | SERIAL_PARITY_NO);
 
-    gimbalCmd.opcode = GIMBAL_CMD_S;
+    gimbalCmdIn.u.gimbalCmd.opcode = GIMBAL_CMD_S;
+    gimbalCmdOut.opcode = GIMBAL_CMD_S;
 
     // Set gimbal initial position
     gimbalSet(0, 0, 0);

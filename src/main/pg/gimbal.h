@@ -25,14 +25,21 @@
 #include "drivers/io_types.h"
 
 typedef struct gimbalTrackConfig_s {
+    int8_t gimbal_roll_rc_gain;
+    int8_t gimbal_pitch_rc_thr_gain;
+    int8_t gimbal_pitch_rc_low_gain;
+    int8_t gimbal_pitch_rc_high_gain;
+    int8_t gimbal_yaw_rc_gain;
     int8_t gimbal_roll_gain;
     int8_t gimbal_roll_offset;
-    int8_t gimbal_pitch_thr_gain;
-    int8_t gimbal_pitch_low_gain;
-    int8_t gimbal_pitch_high_gain;
+    int8_t gimbal_roll_limit;
+    int8_t gimbal_pitch_gain;
     int8_t gimbal_pitch_offset;
+    int8_t gimbal_pitch_low_limit;
+    int8_t gimbal_pitch_high_limit;
     int8_t gimbal_yaw_gain;
     int8_t gimbal_yaw_offset;
+    int8_t gimbal_yaw_limit;
     int8_t gimbal_stabilisation;
     int8_t gimbal_sensitivity;
 } gimbalTrackConfig_t;

@@ -142,13 +142,6 @@ void processRcStickPositions(void)
     static bool doNotRepeat;
     static bool pendingApplyRollAndPitchTrimDeltaSave = false;
 
-#ifdef USE_GIMBAL
-    gimbalTrack(rcData[THROTTLE] - rxConfig()->midrc,
-                rcData[ROLL] - rxConfig()->midrc,
-                rcData[PITCH] - rxConfig()->midrc,
-                rcData[YAW] - rxConfig()->midrc);
-#endif
-
     // checking sticks positions
     uint8_t stTmp = 0;
     for (int i = 0; i < 4; i++) {

@@ -24,7 +24,5 @@
 #include <stdint.h>
 
 bool gimbalInit(void);
-bool gimbalSet(int16_t roll, int16_t pitch, int16_t yaw);
-bool gimbalTrack(int16_t throttle, int16_t roll, int16_t pitch, int16_t yaw);
 void gimbalUpdate(timeUs_t currentTimeUs);
 
