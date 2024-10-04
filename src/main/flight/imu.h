@@ -21,11 +21,13 @@
 #pragma once
 
 #include "common/axis.h"
+#include "common/filter.h"
 #include "common/time.h"
 #include "common/maths.h"
 #include "common/vector.h"
 
 #include "pg/pg.h"
+#include "common/vector.h"
 
 // Exported symbols
 extern bool canUseGPSHeading;
@@ -51,8 +53,26 @@ typedef union {
 } attitudeEulerAngles_t;
 #define EULER_INITIALIZE  { { 0, 0, 0 } }
 
+typedef struct {
+    quaternion attitude;
+    vector3_t integralErr;
+} imuAhrsNominalState_t;
+
+typedef struct {
+    vector3_t rp;
+    float heading;
+} imuAhrsErrorState;
+
+typedef struct {
+    imuAhrsNominalState_t nominal;
+    imuAhrsErrorState error;
+    float rpEstimateCovariance;
+    // float headingEstimateCovariance;
+    float rpCovariance;
+    float headingGain;
+} imuAhrsState_t;
+
 extern attitudeEulerAngles_t attitude;
-extern matrix33_t rMat;
 
 typedef struct imuConfig_s {
     uint16_t imu_dcm_kp;          // DCM filter proportional gain ( x 10000)
@@ -60,6 +80,8 @@ typedef struct imuConfig_s {
     uint8_t small_angle;
     uint8_t imu_process_denom;
     uint16_t mag_declination;     // Magnetic declination in degrees * 10
+    uint8_t gyro_noise_asd;         // gyro noise amplitude spectral density in (decidegrees/s)/sqrt(s)
+    uint8_t acc_noise_std;          // accelerometer noise standard deviation in decidegrees/s
 } imuConfig_t;
 
 PG_DECLARE(imuConfig_t, imuConfig);
@@ -67,13 +89,31 @@ PG_DECLARE(imuConfig_t, imuConfig);
 typedef struct imuRuntimeConfig_s {
     float imuDcmKi;
     float imuDcmKp;
+    float gyroNoisePsd;   // gyro noise power spectral density, (rad/s)^2/s, i.e. gyro_noise_asd squared
+    float accCovariance;   // base accelerometer covariance rad^2
+    vector2_t north_ef;   // reference mag field vector heading due North in EF (2D ground plane projection) adjusted for magnetic declination
+    float smallAngleCosZ;
+    float throttleAngleScale;
+    int throttleAngleValue;
+    float accFilterDependency;  // compensation factor applied to acc covariance to compensate for the acc filter causing values to be dependent
 } imuRuntimeConfig_t;
+
+typedef struct imuGyroReceiveState_s {
+    int32_t deltaCycles;   // clock cycles between last gyro data before previous call to receive, and last gyro data before most recent call
+    int32_t deltaCyclesSpentSaturated;
+    uint32_t previousStamp;
+    vector3_t gyroData;
+    pt1Filter_t imuGyroFilters[XYZ_AXIS_COUNT];
+    bool isInitiated;
+} imuGyroReceiveState_s;
 
 void imuConfigure(uint16_t throttle_correction_angle, uint8_t throttle_correction_value);
 
 float getSinPitchAngle(void);
 float getCosTiltAngle(void);
-void getQuaternion(quaternion * q);
+void imuGetQuaternion(quaternion * q);
+void imuGetState(imuAhrsState_t* state);
+void imuGetRotMatrix(matrix33_t* m);
 void imuUpdateAttitude(timeUs_t currentTimeUs);
 
 void imuInit(void);

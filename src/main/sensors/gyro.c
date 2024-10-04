@@ -31,6 +31,7 @@
 #include "common/axis.h"
 #include "common/maths.h"
 #include "common/filter.h"
+#include "common/vector.h"
 
 #include "config/feature.h"
 #include "config/simplified_tuning.h"
@@ -41,6 +42,7 @@
 
 #include "drivers/bus_spi.h"
 #include "drivers/io.h"
+#include "drivers/system.h"
 
 #include "config/config.h"
 #include "fc/runtime_config.h"
@@ -76,8 +78,6 @@ static FAST_DATA_ZERO_INIT int yawSpinRecoveryThreshold;
 static FAST_DATA_ZERO_INIT bool yawSpinDetected;
 static FAST_DATA_ZERO_INIT timeUs_t yawSpinTimeUs;
 #endif
-
-static FAST_DATA_ZERO_INIT float gyroFilteredDownsampled[XYZ_AXIS_COUNT];
 
 static FAST_DATA_ZERO_INIT int16_t gyroSensorTemperature;
 
@@ -131,6 +131,9 @@ void pgResetFn_gyroConfig(gyroConfig_t *gyroConfig)
     gyroConfig->gyro_lpf1_dyn_expo = 5;
     gyroConfig->simplified_gyro_filter = true;
     gyroConfig->simplified_gyro_filter_multiplier = SIMPLIFIED_TUNING_DEFAULT;
+    gyroConfig->gyro_scaling_adjustment[X] = 0;
+    gyroConfig->gyro_scaling_adjustment[Y] = 0;
+    gyroConfig->gyro_scaling_adjustment[Z] = 0;
 }
 
 bool isGyroSensorCalibrationComplete(const gyroSensor_t *gyroSensor)
@@ -440,6 +443,10 @@ FAST_CODE void gyroUpdate(void)
         break;
 #endif
     }
+    // apply gyro scaling adjustment
+    gyro.gyroADC[X] *= gyro.scalingAdjustment[X];
+    gyro.gyroADC[Y] *= gyro.scalingAdjustment[Y];
+    gyro.gyroADC[Z] *= gyro.scalingAdjustment[Z];
 
     if (gyro.downsampleFilterEnabled) {
         // using gyro lowpass 2 filter for downsampling
@@ -531,20 +538,18 @@ FAST_CODE void gyroFiltering(timeUs_t currentTimeUs)
     }
 #endif
 
-    if (!overflowDetected) {
-        for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
-            gyroFilteredDownsampled[axis] = pt1FilterApply(&gyro.imuGyroFilter[axis], gyro.gyroADCf[axis]);
-        }
-    }
+    // Use clock cycle count at gyro interrupt to get as much precision as possible
+    // use currentTimeUs converted to cycles if interrupts are not used
+    const bool interruptEnabled = gyro.gyroSensor1.gyroDev.gyroModeSPI != GYRO_EXTI_NO_INT;
+    const uint32_t cycleStamp = interruptEnabled ? gyro.gyroSensor1.gyroDev.gyroLastEXTI : clockMicrosToCycles(currentTimeUs);
+    const vector3_t gyroVector = {{ gyro.gyroADCf[FD_ROLL], gyro.gyroADCf[FD_PITCH], gyro.gyroADCf[FD_YAW] }};
+
+    extern void gyroSendTo_imu(const vector3_t* g, const uint32_t stampCycles, const bool overflow);
+    gyroSendTo_imu(&gyroVector, cycleStamp, overflowDetected);
 
 #if !defined(USE_GYRO_OVERFLOW_CHECK) && !defined(USE_YAW_SPIN_RECOVERY)
     UNUSED(currentTimeUs);
 #endif
-}
-
-float gyroGetFilteredDownsampled(int axis)
-{
-    return gyroFilteredDownsampled[axis];
 }
 
 int16_t gyroReadSensorTemperature(gyroSensor_t gyroSensor)
