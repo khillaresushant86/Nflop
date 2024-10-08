@@ -6612,7 +6612,7 @@ typedef struct {
 }
 #endif
 
-static void cliHelp(const char *cmdName, char *cmdline);
+STATIC_UNIT_TESTED void cliHelp(const char *cmdName, char *cmdline);
 
 // should be sorted a..z for bsearch()
 const clicmd_t cmdTable[] = {
@@ -6773,7 +6773,7 @@ const clicmd_t cmdTable[] = {
 #endif
 };
 
-static void cliHelp(const char *cmdName, char *cmdline)
+STATIC_UNIT_TESTED void cliHelp(const char *cmdName, char *cmdline)
 {
     bool anyMatches = false;
 
