@@ -180,9 +180,9 @@ vector3_t *matrixVectorMul(vector3_t * result, const matrix33_t *mat, const vect
 {
     const vector3_t tmp = *v;
 
-    result->x = mat->m[0][0] * tmp.x + mat->m[0][1] * tmp.y + mat->m[0][2] * tmp.z;
-    result->y = mat->m[1][0] * tmp.x + mat->m[1][1] * tmp.y + mat->m[1][2] * tmp.z;
-    result->z = mat->m[2][0] * tmp.x + mat->m[2][1] * tmp.y + mat->m[2][2] * tmp.z;
+    result->x = mat->xx * tmp.x + mat->xy * tmp.y + mat->xz * tmp.z;
+    result->y = mat->yx * tmp.x + mat->yy * tmp.y + mat->yz * tmp.z;
+    result->z = mat->zx * tmp.x + mat->zy * tmp.y + mat->zz * tmp.z;
 
     return result;
 }
@@ -191,9 +191,9 @@ vector3_t *matrixTrnVectorMul(vector3_t *result, const matrix33_t *mat, const ve
 {
     const vector3_t tmp = *v;
 
-    result->x = mat->m[0][0] * tmp.x + mat->m[1][0] * tmp.y + mat->m[2][0] * tmp.z;
-    result->y = mat->m[0][1] * tmp.x + mat->m[1][1] * tmp.y + mat->m[2][1] * tmp.z;
-    result->z = mat->m[0][2] * tmp.x + mat->m[1][2] * tmp.y + mat->m[2][2] * tmp.z;
+    result->x = mat->xx * tmp.x + mat->yx * tmp.y + mat->zx * tmp.z;
+    result->y = mat->xy * tmp.x + mat->yy * tmp.y + mat->zy * tmp.z;
+    result->z = mat->xz * tmp.x + mat->yz * tmp.y + mat->zz * tmp.z;
 
     return result;
 }
@@ -212,15 +212,15 @@ matrix33_t *buildRotationMatrix(matrix33_t *result, const fp_angles_t *rpy)
     const float coszsinx = sinx * cosz;
     const float sinzsinx = sinx * sinz;
 
-    result->m[0][X] = cosz * cosy;
-    result->m[0][Y] = -cosy * sinz;
-    result->m[0][Z] = siny;
-    result->m[1][X] = sinzcosx + (coszsinx * siny);
-    result->m[1][Y] = coszcosx - (sinzsinx * siny);
-    result->m[1][Z] = -sinx * cosy;
-    result->m[2][X] = (sinzsinx) - (coszcosx * siny);
-    result->m[2][Y] = (coszsinx) + (sinzcosx * siny);
-    result->m[2][Z] = cosy * cosx;
+    result->xx = cosz * cosy;
+    result->xy = -cosy * sinz;
+    result->xz = siny;
+    result->yx = sinzcosx + (coszsinx * siny);
+    result->yy = coszcosx - (sinzsinx * siny);
+    result->yz = -sinx * cosy;
+    result->zx = (sinzsinx) - (coszcosx * siny);
+    result->zy = (coszsinx) + (sinzcosx * siny);
+    result->zz = cosy * cosx;
 
     return result;
 }
@@ -235,15 +235,15 @@ matrix33_t *yawToRotationMatrixZ(matrix33_t *result, const float yaw)
     const float sinYaw = sin_approx(yaw);
     const float cosYaw = cos_approx(yaw);
 
-    result->m[0][0] = cosYaw;
-    result->m[1][0] = sinYaw;
-    result->m[2][0] = 0.0f;
-    result->m[0][1] = -sinYaw;
-    result->m[1][1] = cosYaw;
-    result->m[2][1] = 0.0f;
-    result->m[0][2] = 0.0f;
-    result->m[1][2] = 0.0f;
-    result->m[2][2] = 1.0f;
+    result->xx = cosYaw;
+    result->xy = -sinYaw;
+    result->xz = 0.0f;
+    result->yx = sinYaw;
+    result->yy = cosYaw;
+    result->yz = 0.0f;
+    result->zx = 0.0f;
+    result->zy = 0.0f;
+    result->zz = 1.0f;
 
     return result;
 }

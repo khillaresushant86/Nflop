@@ -43,8 +43,18 @@ typedef union vector3_u {
     };
 } vector3_t;
 
-typedef struct matrix33_s {
+typedef union matrix33_u {
     float m[3][3];
+    struct {
+        vector3_t x;
+        vector3_t y;
+        vector3_t z;
+    };
+    struct {
+        float xx, xy, xz;
+        float yx, yy, yz;
+        float zx, zy, zz;
+    };
 } matrix33_t;
 
 bool vector2Equal(const vector2_t *a, const vector2_t *b);
