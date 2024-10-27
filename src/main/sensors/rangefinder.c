@@ -41,7 +41,10 @@
 #include "drivers/rangefinder/rangefinder.h"
 #include "drivers/rangefinder/rangefinder_hcsr04.h"
 #include "drivers/rangefinder/rangefinder_lidartf.h"
+#include "drivers/rangefinder/rangefinder_lidarmt.h"
 #include "drivers/time.h"
+
+#include "msp/msp_rangefinder.h"
 
 #include "fc/runtime_config.h"
 
@@ -125,6 +128,20 @@ static bool rangefinderDetect(rangefinderDev_t * dev, uint8_t rangefinderHardwar
             }
 #endif
             break;
+            
+#if defined(USE_RANGEFINDER_MSP)
+        case RANGEFINDER_MTF01:
+        case RANGEFINDER_MTF02:
+        case RANGEFINDER_MTF01P:
+        case RANGEFINDER_MTF02P:
+        case RANGEFINDER_MT01P:
+            if (mtRangefinderDetect(dev, rangefinderHardwareToUse)) {
+                rangefinderHardware = rangefinderHardwareToUse;
+                setRangefinderMSP(rangefinderHardwareToUse);
+                rescheduleTask(TASK_RANGEFINDER, TASK_PERIOD_MS(dev->delayMs));
+            }
+            break;
+#endif
 
         case RANGEFINDER_NONE:
             rangefinderHardware = RANGEFINDER_NONE;

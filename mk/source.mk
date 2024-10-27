@@ -138,6 +138,7 @@ COMMON_SRC = \
             msp/msp_box.c \
             msp/msp_build_info.c \
             msp/msp_serial.c \
+            msp/msp_rangefinder.c \
             scheduler/scheduler.c \
             sensors/adcinternal.c \
             sensors/battery.c \
@@ -232,6 +233,7 @@ COMMON_SRC = \
             drivers/light_ws2811strip.c \
             drivers/rangefinder/rangefinder_hcsr04.c \
             drivers/rangefinder/rangefinder_lidartf.c \
+            drivers/rangefinder/rangefinder_lidarmt.c \
             drivers/serial_escserial.c \
             drivers/vtx_common.c \
             drivers/vtx_table.c \

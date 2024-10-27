@@ -113,6 +113,7 @@
 #include "msp/msp_protocol_v2_betaflight.h"
 #include "msp/msp_protocol_v2_common.h"
 #include "msp/msp_serial.h"
+#include "msp/msp_rangefinder.h"
 
 #include "osd/osd.h"
 #include "osd/osd_elements.h"
@@ -3294,8 +3295,13 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
 #else
         sbufReadU8(src);
 #endif
-        break;
 
+#ifdef USE_RANGEFINDER
+        rangefinderConfigMutable()->rangefinder_hardware = sbufReadU8(src);
+#else
+        sbufReadU8(src);        // rangefinder hardware
+#endif
+        break;
 #ifdef USE_ACC
     case MSP_ACC_CALIBRATION:
         if (!ARMING_FLAG(ARMED))
@@ -3646,6 +3652,11 @@ static mspResult_e mspProcessInCommand(mspDescriptor_t srcDesc, int16_t cmdMSP, 
         break;
 #endif
 
+#if defined(USE_RANGEFINDER_MSP)
+    case MSP2_SENSOR_RANGEFINDER_LIDARMT:
+        mspRangefinderReceiveNewData(sbufPtr(src));
+        break;
+#endif
 #ifdef USE_GPS
     case MSP2_SENSOR_GPS:
         (void)sbufReadU8(src);              // instance
